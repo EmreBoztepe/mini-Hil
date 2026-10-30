@@ -1,0 +1,9 @@
+# CubeIDE workspace state
+.metadata/
+
+# Firmware build outputs
+/firmware/stm32f407_discovery/Debug/
+/firmware/stm32f407_discovery/Release/
+
+# Local compiler discovery cache
+/firmware/stm32f407_discovery/.settings/language.settings.xml
