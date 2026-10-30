@@ -1,5 +1,37 @@
 # mini-Hil — Proje Kapsamı
 
+## Aktif geliştirme kapsamı: STM32 firmware
+
+Mevcut çalışma STM32F407 Discovery üzerinde çalışacak yazılımla sınırlıdır.
+Bu firmware içinde `App`, `Targets` ve `Platform` katmanları oluşturulacaktır.
+Üç katman aynı CubeIDE projesinde derlenecek ve tek firmware olarak çalışacaktır.
+
+- **App/Generated:** PC'deki senaryo tanımından C/H şablonlarıyla üretilen
+  sabit adım tabloları, parametreler ve beklenen veriler.
+- **App/Runtime:** Elle geliştirilen ortak adım tipleri ve yürütücü;
+  adımların yürütülmesi, süre takibi ve başarı/başarısızlık kararı.
+- **Targets:** STM32'nin test edilen kartı tanımak için kullandığı hedef
+  ayarları ve protokol kodu. ECU üzerinde çalışan yazılım değildir.
+- **Platform:** Discovery donanımına erişim; UART/I/O aktarımı, zaman okuma
+  ve donanım hata bildirimleri.
+
+Senaryo üretim modeli kararlaştırılmıştır: generator, `scenario.c.in` ve
+`scenario.h.in` şablonlarından `.c/.h` dosyaları üretecek; ortak runtime bu
+dosyalardaki `const` senaryo tablolarını STM32 üzerinde çalıştıracaktır.
+Her senaryo için ayrı C durum makinesi üretilmeyecektir. Üretilen dosyalar
+elle düzenlenmeyecek; kaynak senaryo değiştirildikten sonra yeniden üretim,
+derleme ve karta yükleme yapılacaktır.
+
+PC aracının/generator'ın ve GUI'nin uygulanması, ECU firmware değişiklikleri
+ve fiziksel adaptör tasarımı mevcut geliştirme adımının dışındadır. STM32
+senaryo arayüzleri ve C/H şablonları, kararlaştırılan üretim modeline göre
+tasarlanacaktır. Aşağıdaki genel proje hedefleri gelecek çalışmalara bağlam
+sağlar; mevcut adımın teslim kapsamını genişletmez.
+
+İlk yapısal adım katmanların klasörlerini ve sorumluluk sınırlarını tanımlar.
+UART ve handshake uygulaması; hedef, bağlantı ve protokol kararları üzerinden
+ayrıca geliştirilecektir. Ayrıntılar: [STM32 yazılım mimarisi](STM32_YAZILIM_MIMARISI.md).
+
 ## Amaç
 
 STM32F407 Discovery kartını, farklı ECU / hedef PCB'ler üzerinde çalışan gömülü
@@ -33,7 +65,7 @@ uyumluluk, paket formatı ve zamanlama değerleri henüz kesinleştirilmemiştir
 | --- | --- |
 | STM32F407 Discovery | İlk aşamada UART test isteğini göndermek, yanıtı almak ve süreyi ölçmek. İleride fiziksel uyaran üretimi ve ölçüm görevlerini üstlenmek. |
 | ECU / hedef PCB | Gerçek uygulama yazılımını çalıştırmak ve tanımlanan UART isteğine yanıt vermek. |
-| PC / Python | İlerleyen aşamada testleri yönetmek, sonuçları değerlendirmek ve raporlamak. PC bağlantısı ve GUI ilk handshake testinin ön koşulu değildir. |
+| PC / Python | İlerleyen aşamada senaryoları hazırlamak, şablonlardan C/H senaryo dosyalarını üretmek ve sonuçları raporlamak. Test adımlarını STM32 runtime'ı yürütür. Sürekli PC bağlantısı ve GUI ilk handshake testinin ön koşulu değildir. |
 
 ECU tarafındaki haberleşme işleme, uygulamanın normal görevlerini bloke etmeyecek
 şekilde tasarlanmalıdır. Zamanlaması kritik fiziksel sinyal üretimi gerektiğinde
@@ -50,7 +82,7 @@ ayrı bir eklenti sistemi veya kapsamlı bir framework kurulmasını gerektirmez
 | Hedef profili | Hedef kimliği, mantıksal sinyallerin HIL kanallarına eşlenmesi, haberleşme ayarları, elektriksel sınırlar ve kullanılacak adaptör bilgisi. |
 | Hedef haberleşme tanımı | İstek/yanıt formatları ve bunların işlenmesi. Gerektiğinde hedefe özel protokol işleme kodu içerir. |
 | Fiziksel bağlantı adaptörü | Kablo demeti, konnektör eşlemesi ve gereken seviye dönüştürme, koruma veya izolasyon devreleri. |
-| Test senaryoları | Hedefe uygulanacak adımlar, beklenen yanıtlar, süre sınırları ve kabul kriterleri. |
+| Test senaryoları | PC'deki kaynak tanımından üretilen adımlar, beklenen yanıtlar, süre sınırları ve kabul kriterleri; STM32'de ortak runtime tarafından yürütülür. |
 
 Testler, mümkün olduğunda fiziksel pin numarası yerine mantıksal sinyal veya
 kanal adları kullanmalıdır. Bu adların gerçek HIL kaynağına ve hedef pinine
@@ -61,7 +93,8 @@ Hedef değişimi için öngörülen iş akışı:
 1. Hedefin sinyal, haberleşme, elektriksel seviye ve zamanlama ihtiyaçlarını çıkar.
 2. Mevcut HIL kaynaklarının ve adaptörün bu ihtiyaçları karşılayabildiğini doğrula.
 3. Hedef profilini, bağlantı tanımını ve gerekiyorsa protokol işleme kodunu hazırla.
-4. Hedefe ait test senaryolarını seç veya oluştur; önce bağlantı/handshake testini çalıştır.
+4. Hedefe ait senaryoyu seç veya oluştur; C/H dosyalarını şablonlardan üret,
+   derle ve STM32'ye yükle. Önce bağlantı/handshake testini çalıştır.
 5. Sonuçları kullanılan hedef profili ve adaptör revizyonuyla birlikte kaydet.
 
 Esneklik, her kartın yalnızca yazılım ayarıyla bağlanabileceği anlamına gelmez.
@@ -128,8 +161,8 @@ içermelidir.
 - Hatalı paket sonrasında yeni bir geçerli handshake işlenebilir.
 - Belirlenecek tekrar sayısı boyunca sonuçlar ve yanıt süreleri kaydedilir.
 - Test kaydı; kullanılan ECU ve Discovery yazılım sürümlerini, UART ayarlarını,
-  hedef profili ve adaptör revizyonunu, gönderilen/alınan mesajları, süreyi ve
-  başarı/başarısızlık nedenini içerir.
+  senaryo, generator ve şablon sürümlerini, hedef profili ve adaptör revizyonunu,
+  gönderilen/alınan mesajları, süreyi ve başarı/başarısızlık nedenini içerir.
 
 Sayısal süre sınırı ve tekrar sayısı, ECU görev yapısı ve UART ayarları
 netleştirildikten sonra belirlenecektir.
@@ -152,7 +185,8 @@ olarak değerlendirilmez.
 
 İleride, seçilecek test gereksinimlerine göre şu kapsamlar değerlendirilebilir:
 
-- PC / Python üzerinden otomatik test yürütme ve raporlama.
+- PC / Python üzerinden senaryo hazırlama, şablonlardan kaynak üretimi,
+  test başlatma ve raporlama.
 - Dijital, analog veya PWM girişlerinin uygun elektriksel devrelerle uyarılması.
 - ECU fiziksel çıkışlarının ölçülmesi ve beklenen davranışla karşılaştırılması.
 - Gereksinimlere bağlı hata senaryoları ve zamanlama testleri.
@@ -171,6 +205,8 @@ olarak kaydedilmelidir.
 5. Timeout, süre ölçüm noktaları ve test tekrar sayısı.
 6. İlk aşama sonuçlarının hangi araç veya arayüz üzerinden kaydedileceği.
 7. İlk hedef profilinin içeriği ve derleme/çalışma sırasında seçim yöntemi.
+8. Runtime ortak adım veri yapısı, senaryo bildirim arayüzü ve desteklenen işlemler.
+9. Kaynak senaryo dosyasının biçimi ve C/H şablon alanlarının sözdizimi.
 
 ## İlerleme ve doğrulama planı
 
