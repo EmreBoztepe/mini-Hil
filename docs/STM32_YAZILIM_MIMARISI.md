@@ -6,9 +6,12 @@ Bu doküman STM32F407 Discovery üzerindeki firmware'i kapsar. `App`, `Targets`
 ve `Platform` aynı `hilSoftware` projesinin parçalarıdır; ayrı işlemcilerde
 veya ayrı firmware görüntülerinde çalışmazlar.
 
-Şu anda katman klasörleri ve sorumlulukları tanımlıdır. Bu klasörlerde henüz
-C arayüzü, UART sürücüsü veya handshake senaryosu uygulanmamıştır. Mevcut
-`Core` ve `Drivers` başlangıç projesi korunur. Aşağıdaki şablon ve yürütücü
+Şu anda katman klasörleri ve sorumlulukları tanımlıdır. `Platform` içinde
+bloklamayan USB CDC arayüzü uygulanmıştır. `Core/main.c` ana döngüsündeki
+ham echo, PC–Discovery bağlantısını doğrulayan geçici başlangıç uygulamasıdır;
+senaryo tablosu veya runtime değildir. UART sürücüsü ve handshake senaryosu
+henüz uygulanmamıştır. CubeMX başlangıcı `Core`, `Drivers`, `USB_DEVICE` ve
+`Middlewares` altındadır. Aşağıdaki şablon ve yürütücü
 tasarımı kararlaştırılmıştır; şablonlar, generator ve runtime henüz uygulanmamıştır.
 
 ## Dizin yapısı
@@ -102,7 +105,7 @@ flowchart TB
     R -->|"Tabloları okur"| G
     R --> D
     R --> T["Targets: Hedef ayarları ve protokol"]
-    R --> P["Platform: UART, I/O ve zaman"]
+    R --> P["Platform: USB CDC, UART, I/O ve zaman"]
     P --> H["STM32 HAL / Donanım"]
 ```
 
@@ -119,7 +122,7 @@ akışını `App/Runtime` yönetir.
 | App/Generated | Senaryo adımları, parametreler ve beklenen davranışın sabit veri olarak tanımı | Adımların yürütülmesi ve donanım çağrıları |
 | App/Runtime | Ortak adım tipleri, yürütme durumu, süre sınırlarının değerlendirilmesi, PASS/FAIL kararı | Baytların paketlenmesi ve fiziksel aktarılması |
 | Targets | Hedef kimliği, haberleşme ayarları, mesaj oluşturma, paket ayrıştırma ve protokol geçerliliği | UART sürücüsü ve senaryonun PASS/FAIL kararı |
-| Platform | UART/I/O erişimi, aktarım tamponları, zaman okuma ve donanım hataları | Hedef mesajlarının anlamı ve test beklentileri |
+| Platform | USB CDC/UART/I/O erişimi, aktarım tamponları, zaman okuma ve donanım hataları | Hedef mesajlarının anlamı ve test beklentileri |
 
 `App` ve `Targets` doğrudan HAL veya register erişimi içermemelidir. HAL
 bağımlılığı `Platform` ve CubeMX'in ürettiği `Core` kodunda tutulmalıdır.
@@ -129,7 +132,18 @@ aittir. HIL kanallarının hedef konnektöründeki karşılıkları hedef bağla
 tanımına aittir. Hedef profili, donanımın desteklemediği bir pin eşlemesini
 yalnızca ayar değiştirerek uygulanabilir hale getirmez.
 
-## İlk kullanım: UART handshake
+## Başlangıç doğrulaması: PC–Discovery USB CDC
+
+PC, USB Host; Discovery, USB Device / CDC-ACM olarak çalışır. MCU'nun CN5
+bağlantısı kullanılır. Platform bayt taşır; mevcut ana döngü bunları aynen
+geri gönderir. ST CDC callback'leri yalnızca aktarım verisini ve durumunu
+Platform'a bildirir. Ayrıntılar: [USB CDC doğrulama](USB_CDC_DOGRULAMA.md).
+
+Bu bağlantı ileride PC komutları ve sonuç aktarımı için kullanılabilir.
+Komut protokolü henüz tanımlanmamıştır. Senaryonun şablondan üretilip STM32
+üzerinde yürütülmesi kararı korunur; canlı PC senaryo yorumlayıcısı eklenmez.
+
+## İlk hedef testi: UART handshake
 
 1. `App/Runtime`, `App/Generated` tablosundaki handshake adımını başlatır.
 2. `Targets`, hedef protokolüne uygun istek paketini oluşturur.
@@ -161,11 +175,13 @@ ilk senaryonun gerektirdiği, tanımlanmış işlem türlerini destekleyecektir.
 
 ## Sonraki uygulama adımı
 
-Önce ortak test adımının C veri yapısı, senaryo bildirim arayüzü ve runtime'ın
+Önce USB CDC echo gerçek PC–Discovery bağlantısında doğrulanacaktır. Ardından
+ortak test adımının C veri yapısı, senaryo bildirim arayüzü ve runtime'ın
 destekleyeceği ilk işlemler tanımlanacaktır. `scenario.c.in` ve `scenario.h.in`
 şablonları bu sözleşme üzerine kurulacaktır. Kaynak senaryo dosyasının biçimi
 ve şablon alanlarının sözdizimi henüz kararlaştırılmamıştır.
 
 İlk hedefin UART bağlantısı, mesaj sözleşmesi, süre ölçüm noktaları ve yanıt
-beklentisi de netleştirilmelidir. ECU uygulaması ve PC yazılımı bu STM32
-geliştirme kapsamına dahil değildir.
+beklentisi de netleştirilmelidir. ECU uygulaması ve PC senaryo aracı/GUI bu
+STM32 geliştirme kapsamına dahil değildir; küçük USB doğrulama betiği bu
+sınırın dışındaki ayrı bir kontrol aracıdır.

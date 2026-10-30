@@ -9,3 +9,8 @@ mimaride test senaryoları PC aracında hazırlanacak, sabit C/H şablonlarında
 
 - [Proje kapsamı](docs/PROJE_KAPSAMI.md)
 - [STM32 yazılım mimarisi ve senaryo üretim kararı](docs/STM32_YAZILIM_MIMARISI.md)
+- [PC–Discovery USB CDC bağlantısı ve doğrulama](docs/USB_CDC_DOGRULAMA.md)
+
+İlk Platform uygulaması USB OTG FS Device / CDC haberleşmesidir. Mevcut
+firmware, CN5 üzerinden PC'den gelen ikili veriyi geri gönderir. ECU UART
+bağlantısı ve senaryo yürütücüsü sonraki adımlardır.

@@ -18,10 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "hil_usb_cdc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,7 +66,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  uint8_t echo_buffer[HIL_USB_CDC_PACKET_SIZE];
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -81,11 +82,12 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  HilUsbCdc_Init();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -97,6 +99,27 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    /* Transport bring-up only; the future App runtime replaces this echo. */
+    if (HilUsbCdc_Process() == HIL_USB_CDC_IO_ERROR)
+    {
+      HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);
+    }
+
+    /* Keep the read/write pair in one USB session, without waiting in IRQ lock. */
+    uint32_t irq_state = __get_PRIMASK();
+    __disable_irq();
+    if (HilUsbCdc_CanWrite())
+    {
+      uint32_t length = HilUsbCdc_Read(echo_buffer, sizeof(echo_buffer));
+      if (length > 0U)
+      {
+        if (HilUsbCdc_Write(echo_buffer, length) != HIL_USB_CDC_OK)
+        {
+          HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);
+        }
+      }
+    }
+    __set_PRIMASK(irq_state);
   }
   /* USER CODE END 3 */
 }

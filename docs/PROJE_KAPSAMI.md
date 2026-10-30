@@ -12,7 +12,7 @@ Bu firmware içinde `App`, `Targets` ve `Platform` katmanları oluşturulacaktı
   adımların yürütülmesi, süre takibi ve başarı/başarısızlık kararı.
 - **Targets:** STM32'nin test edilen kartı tanımak için kullandığı hedef
   ayarları ve protokol kodu. ECU üzerinde çalışan yazılım değildir.
-- **Platform:** Discovery donanımına erişim; UART/I/O aktarımı, zaman okuma
+- **Platform:** Discovery donanımına erişim; USB CDC/UART/I/O aktarımı, zaman okuma
   ve donanım hata bildirimleri.
 
 Senaryo üretim modeli kararlaştırılmıştır: generator, `scenario.c.in` ve
@@ -22,15 +22,18 @@ Her senaryo için ayrı C durum makinesi üretilmeyecektir. Üretilen dosyalar
 elle düzenlenmeyecek; kaynak senaryo değiştirildikten sonra yeniden üretim,
 derleme ve karta yükleme yapılacaktır.
 
-PC aracının/generator'ın ve GUI'nin uygulanması, ECU firmware değişiklikleri
+PC senaryo aracının/generator'ın ve GUI'nin uygulanması, ECU firmware değişiklikleri
 ve fiziksel adaptör tasarımı mevcut geliştirme adımının dışındadır. STM32
 senaryo arayüzleri ve C/H şablonları, kararlaştırılan üretim modeline göre
 tasarlanacaktır. Aşağıdaki genel proje hedefleri gelecek çalışmalara bağlam
 sağlar; mevcut adımın teslim kapsamını genişletmez.
 
-İlk yapısal adım katmanların klasörlerini ve sorumluluk sınırlarını tanımlar.
-UART ve handshake uygulaması; hedef, bağlantı ve protokol kararları üzerinden
-ayrıca geliştirilecektir. Ayrıntılar: [STM32 yazılım mimarisi](STM32_YAZILIM_MIMARISI.md).
+İlk Platform geliştirmesi PC–Discovery arasında USB OTG FS Device / CDC
+bağlantısıdır. Ham ikili echo ve küçük bir PC doğrulama betiği bu adımın
+kapsamındadır. Bu betik senaryo generator'ı veya GUI değildir. UART ve
+handshake uygulaması; hedef, bağlantı ve protokol kararları üzerinden ayrıca
+geliştirilecektir. Ayrıntılar: [STM32 yazılım mimarisi](STM32_YAZILIM_MIMARISI.md)
+ve [USB CDC doğrulama](USB_CDC_DOGRULAMA.md).
 
 ## Amaç
 
@@ -42,7 +45,7 @@ Platform tek bir hedef karta özel tasarlanmayacaktır. Hedef kart değiştiğin
 desteklenen donanım yetenekleri içinde ortak HIL altyapısını değiştirmeden hedef
 profilini, bağlantı adaptörünü ve test senaryolarını uyarlamak amaçlanır.
 
-İlk adım, Discovery kartı ile ECU arasında UART üzerinden basit bir istek–yanıt
+İlk hedef testi, Discovery kartı ile ECU arasında UART üzerinden basit bir istek–yanıt
 (handshake) haberleşmesi kurmak ve bu haberleşmeyi ölçülebilir kabul kriterleriyle
 doğrulamaktır. UART protokolü iki taraf için de tasarlanacaktır.
 
